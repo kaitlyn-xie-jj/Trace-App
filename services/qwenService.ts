@@ -1,6 +1,8 @@
 import { AIAnalysisResult, SceneRecord, ChatMessage, SceneType, ChatAIResponse } from "../types";
 
-const API_KEY = import.meta.env.VITE_DASHSCOPE_API_KEY || "sk-05437c944b084b288c3948746c58630e";
+// Temporary compatibility only: a VITE_ key is still exposed to browser clients.
+// Before a public release, move all Qwen calls to an authenticated server-side endpoint.
+const API_KEY = import.meta.env.VITE_DASHSCOPE_API_KEY || "";
 
 // Qwen VL Max API endpoint
 // Use proxy path in both Dev (Vite) and Prod (Nginx) to avoid CORS issues
