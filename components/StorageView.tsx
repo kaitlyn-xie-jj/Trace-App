@@ -5,13 +5,14 @@ import { getCategories, addCategory } from '../services/dbService';
 import { SceneRecord, AIItem, SceneType } from '../types';
 
 interface StorageViewProps {
-  onAddScene: (scene: SceneRecord) => void;
+  onAddScene: (scene: SceneRecord) => Promise<void>;
+  onUpdateScene: (scene: SceneRecord) => Promise<void>;
   initialImage?: string | null;
   existingScenes: SceneRecord[];
   onDeleteScene: (id: string) => Promise<void>;
 }
 
-const StorageView: React.FC<StorageViewProps> = ({ onAddScene, initialImage, existingScenes, onDeleteScene }) => {
+const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, initialImage, existingScenes }) => {
   const [image, setImage] = useState<string | null>(initialImage || null);
   const [analyzing, setAnalyzing] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -154,7 +155,7 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, initialImage, exi
     if (!image || syncing) return;
     
     const locationName = batchLocation.trim() || '未命名位置';
-    const existing = existingScenes.find(s => s.locationCategory === locationName);
+    const existing = existingScenes.find(s => s.locationCategory === locationName && (s.superCategory || '') === selectedSpace);
     
     if (existing) {
       setConflictId(existing.id);
@@ -165,34 +166,42 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, initialImage, exi
     await performSave(locationName);
   };
 
-  const performSave = async (locationName: string) => {
+  const performSave = async (locationName: string, replaceId?: string): Promise<boolean> => {
     setSyncing(true);
     try {
       const compressedImage = await resizeImage(image!); // image checked before
       const newScene: SceneRecord = {
-        id: generateId(),
+        id: replaceId || generateId(),
         fullImageUrl: compressedImage,
         timestamp: Date.now(),
         locationCategory: locationName,
         superCategory: selectedSpace || undefined,
         items: detectedItems
       };
-      onAddScene(newScene);
+      if (replaceId) {
+        await onUpdateScene(newScene);
+      } else {
+        await onAddScene(newScene);
+      }
+      return true;
     } catch (e) {
-      alert("保存失败");
+      console.error('Scene save failed', e);
+      alert("保存失败，请重试。原记录不会被删除。");
+      return false;
     } finally {
       setSyncing(false);
     }
   };
 
   const handleConfirmOverwrite = async () => {
-    if (conflictId) {
-      await onDeleteScene(conflictId);
-    }
-    setShowConflictModal(false);
-    setConflictId(null);
+    if (!conflictId || syncing) return;
     const locationName = batchLocation.trim() || '未命名位置';
-    await performSave(locationName);
+    // Update the existing record in place; never delete it before persistence succeeds.
+    const saved = await performSave(locationName, conflictId);
+    if (saved) {
+      setShowConflictModal(false);
+      setConflictId(null);
+    }
   };
 
   const handleCancelOverwrite = () => {
