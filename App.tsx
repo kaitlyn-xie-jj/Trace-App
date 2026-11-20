@@ -6,7 +6,7 @@ import ChatSearch from './components/ChatSearch';
 import GalleryView from './components/GalleryView';
 import { StorageItem, SceneType, SceneRecord } from './types';
 import { getAIModel, setAIModel, AIModelType } from './services/aiService';
-import { getAllScenes, addScene, deleteScene } from './services/dbService';
+import { getAllScenes, addScene, updateScene, deleteScene } from './services/dbService';
 
 const STORAGE_KEY = 'smart_organize_items_v2';
 
@@ -50,7 +50,14 @@ const App: React.FC = () => {
       setActiveTab('gallery');
     } catch (e) {
       console.error("Failed to add scene", e);
+      throw e;
     }
+  };
+
+  const handleUpdateScene = async (updatedScene: SceneRecord) => {
+    await updateScene(updatedScene);
+    setScenes(prev => prev.map(s => s.id === updatedScene.id ? updatedScene : s));
+    setActiveTab('gallery');
   };
 
   const handleDeleteScene = async (id: string, skipConfirm = false) => {
@@ -144,6 +151,7 @@ const App: React.FC = () => {
           <div className="h-full">
             <StorageView 
               onAddScene={handleAddScene} 
+              onUpdateScene={handleUpdateScene}
               initialImage={pendingImage} 
               existingScenes={scenes}
               onDeleteScene={(id) => handleDeleteScene(id, true)}
