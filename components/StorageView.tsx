@@ -81,26 +81,33 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
 
   // 压缩图片以节省存储空间
   const resizeImage = (base64: string): Promise<string> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
-      img.src = base64;
+      img.onerror = () => reject(new Error('Unable to load the selected image'));
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1024;
-        let width = img.width;
-        let height = img.height;
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024;
+          let width = img.width;
+          let height = img.height;
+          if (!width || !height) throw new Error('Invalid image dimensions');
 
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+
+          canvas.width = Math.round(width);
+          canvas.height = Math.round(height);
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Image canvas unavailable');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        } catch (error) {
+          reject(error);
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
+      img.src = base64;
     });
   };
 
