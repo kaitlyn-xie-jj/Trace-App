@@ -5,6 +5,7 @@ import { open } from 'sqlite';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { projectInventory } from './inventoryProjection.js';
 
 // Load environment variables
 // Try loading .env first, then .env.local (if exists, it won't override set vars by default in older dotenv, 
@@ -226,6 +227,21 @@ app.put('/api/scenes/:id', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Trace Core v0: read-only inventory projection ---
+// This endpoint is NOT multi-tenant. It retains the same access boundary as
+// /api/scenes and must not be exposed publicly without authorization.
+app.get('/api/core/inventory', async (req, res) => {
+  try {
+    const scenes = await db.all(
+      'SELECT id, timestamp, locationCategory, superCategory, items FROM scenes ORDER BY timestamp DESC'
+    );
+    res.json(projectInventory(scenes));
+  } catch (err) {
+    console.error('Inventory projection failed', err);
+    res.status(500).json({ error: 'Failed to load inventory' });
   }
 });
 
