@@ -75,3 +75,34 @@ npm run build
 ```
 
 CI runs these commands for pull requests. The architecture document does not assert that any specific run has passed.
+
+## T-01: Deterministic search
+
+New endpoint: `GET /api/core/search?q=护照&limit=20`.
+
+It runs `projectInventory` over the same legacy scene rows, followed by
+`searchInventory`. It does not send data to any AI provider.
+
+- Exact names rank above name-in-question/substring matches, followed by category,
+  storage spot, space and descriptions.
+- Results include the originating `sourceSceneId`, provisional record ID,
+  location and `matchedField`; they are **evidence of the last recording**,
+  not proof the physical item remains there.
+- `count` is total matches and `truncated` indicates whether the requested
+  1–100 limit cut off any results.
+- Input is bounded to 1–200 query characters and the route returns 400 for
+  invalid inputs.
+- The matching is lexical, not semantic: synonyms, typos and ambiguous terms
+  are not guaranteed to match. The existing AI-powered chat remains unchanged.
+- **Security**: this endpoint shares the unauthenticated legacy API boundary.
+  Do not expose organizer/customer or laboratory information to untrusted users
+  until account ownership and authorization are implemented.
+
+CI: unit tests cover both the legacy projection and this search module.
+A prior CI run passed the initial 6 tests but failed the frontend build on the
+missing optional `@rollup/rollup-linux-x64-gnu` dependency. This branch adds a
+Linux CI-only install step; it must still be verified on a fresh workflow run.
+
+The T-01 endpoint is an **API foundation**: the current React chat screen is not
+yet wired to use it. The follow-up acceptance gate is a client-side path with
+lexical-first search, carefully scoped AI fallback, and UI integration tests.
