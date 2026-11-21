@@ -1,0 +1,25 @@
+name: Trace checks
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install
+      # npm optional-dependency resolution may omit Rollup's Linux native package.
+      # Explicitly install the matching package on Linux without editing the lockfile.
+      - name: Ensure Linux Rollup binary
+        run: npm install --no-save --package-lock=false @rollup/rollup-linux-x64-gnu
+      - name: Unit tests
+        run: npm test
+      - name: Frontend build
+        run: npm run build
