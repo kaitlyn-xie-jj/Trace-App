@@ -15,6 +15,10 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm install
+      # npm optional-dependency resolution may omit Rollup's Linux native package.
+      # Explicitly install the matching package on Linux without editing the lockfile.
+      - name: Ensure Linux Rollup binary
+        run: npm install --no-save --package-lock=false @rollup/rollup-linux-x64-gnu
       - name: Unit tests
         run: npm test
       - name: Frontend build
