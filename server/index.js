@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { projectInventory } from './inventoryProjection.js';
+import { searchInventory } from './inventorySearch.js';
 
 // Load environment variables
 // Try loading .env first, then .env.local (if exists, it won't override set vars by default in older dotenv, 
@@ -242,6 +243,28 @@ app.get('/api/core/inventory', async (req, res) => {
   } catch (err) {
     console.error('Inventory projection failed', err);
     res.status(500).json({ error: 'Failed to load inventory' });
+  }
+});
+
+// Lexical retrieval with no model calls, scored against existing scene evidence.
+// As with /api/core/inventory, this endpoint is not safe for public multi-tenant use.
+app.get('/api/core/search', async (req, res) => {
+  const query = req.query.q;
+  const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+  if (typeof query !== 'string' || !query.trim() || query.trim().length > 200 ||
+      !Number.isInteger(limit) || limit < 1 || limit > 100) {
+    return res.status(400).json({ error: 'Provide q (1-200 characters) and limit (1-100)' });
+  }
+  try {
+    const scenes = await db.all(
+      'SELECT id, timestamp, locationCategory, superCategory, items FROM scenes ORDER BY timestamp DESC'
+    );
+    const inventory = projectInventory(scenes);
+    const results = searchInventory(inventory, query, { limit });
+    res.json({ ...results, warnings: inventory.warnings });
+  } catch (err) {
+    console.error('Inventory search failed', err);
+    res.status(500).json({ error: 'Failed to search inventory' });
   }
 });
 
