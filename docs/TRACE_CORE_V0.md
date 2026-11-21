@@ -103,6 +103,9 @@ A prior CI run passed the initial 6 tests but failed the frontend build on the
 missing optional `@rollup/rollup-linux-x64-gnu` dependency. This branch adds a
 Linux CI-only install step; it must still be verified on a fresh workflow run.
 
-The T-01 endpoint is an **API foundation**: the current React chat screen is not
-yet wired to use it. The follow-up acceptance gate is a client-side path with
-lexical-first search, carefully scoped AI fallback, and UI integration tests.
+The T-01 endpoint is now used by the React chat screen in a conservative
+local-first mode: item-name matches with score >= 80 are shown with their
+scene evidence; otherwise the original AI query path is used. The chat message
+explicitly says the position is based on the last recording. This integration
+is not yet covered by a browser-level UI test; it must be exercised manually
+for matching, fallback, duplicate items, loading states and mobile layout.
