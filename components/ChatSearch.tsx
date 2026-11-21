@@ -73,7 +73,44 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
     addChatMessage(userMsg).catch(console.error);
     
     try {
-      const aiResponse: ChatAIResponse = await queryInventory(query, scenes, messages);
+      // Prefer deterministic item-name matches: fast, auditable, and zero model cost.
+      // Fall back to the existing AI search for ambiguous or unmatched questions.
+      let aiResponse: ChatAIResponse | null = null;
+      try {
+        const response = await fetch(`/api/core/search?q=${encodeURIComponent(query)}&limit=10`);
+        if (response.ok) {
+          const local = await response.json() as {
+            results?: Array<{
+              item: { name: string; sourceSceneId: string };
+              location?: { name: string; spaceName: string };
+              score: number;
+              matchedField: string;
+            }>;
+          };
+          const matched = (local.results || []).filter(hit =>
+            hit.score >= 80 && hit.matchedField === 'name'
+          );
+          if (matched.length > 0) {
+            const locationDescriptions = matched.map(hit =>
+              `${hit.item.name}：${hit.location?.spaceName || '未分类空间'} / ${hit.location?.name || '未命名位置'}`
+            );
+            aiResponse = {
+              answer: `根据上次记录，${locationDescriptions.join('；')}。位置可能已变化，请以实物为准。`,
+              matchedSceneIds: [...new Set(matched.map(hit => hit.item.sourceSceneId))],
+              matchedItemDetails: matched.map(hit => ({
+                sceneId: hit.item.sourceSceneId,
+                itemName: hit.item.name
+              })),
+              modelName: '本地记录检索'
+            };
+          }
+        }
+      } catch (localError) {
+        console.warn('Local inventory search unavailable; falling back to AI', localError);
+      }
+      if (!aiResponse) {
+        aiResponse = await queryInventory(query, scenes, messages);
+      }
       
       // 聚合匹配结果：一个场景下可能有多个匹配物品
       const matchMap = new Map<string, MatchResult>();
