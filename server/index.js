@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { projectInventory } from './inventoryProjection.js';
 import { searchInventory } from './inventorySearch.js';
+import { prepareSceneUpdate } from './sceneUpdates.js';
 
 // Load environment variables
 // Try loading .env first, then .env.local (if exists, it won't override set vars by default in older dotenv, 
@@ -62,9 +63,7 @@ async function initDB() {
   console.log(`Connected to database at ${DB_FILE}`);
 }
 
-initDB().catch(err => {
-  console.error('Failed to initialize database', err);
-});
+// Start listening only after SQLite schema initialization succeeds.
 
 // Routes
 
@@ -205,24 +204,22 @@ app.put('/api/scenes/:id', async (req, res) => {
     const existing = await db.get('SELECT * FROM scenes WHERE id = ?', [id]);
     if (!existing) return res.status(404).json({ error: 'Scene not found' });
 
-    const itemsStr = typeof updates.items === 'object' ? JSON.stringify(updates.items) : existing.items;
+    let values;
+    try {
+      values = prepareSceneUpdate(existing, updates);
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
 
     await db.run(
-      `UPDATE scenes SET 
-       fullImageUrl = ?, 
-       timestamp = ?, 
-       locationCategory = ?, 
-       superCategory = ?, 
-       items = ? 
+      `UPDATE scenes SET
+       fullImageUrl = ?,
+       timestamp = ?,
+       locationCategory = ?,
+       superCategory = ?,
+       items = ?
        WHERE id = ?`,
-      [
-        updates.fullImageUrl || existing.fullImageUrl,
-        updates.timestamp || existing.timestamp,
-        updates.locationCategory || existing.locationCategory,
-        updates.superCategory || existing.superCategory,
-        itemsStr,
-        id
-      ]
+      [...values, id]
     );
 
     res.json({ success: true });
@@ -341,6 +338,13 @@ app.get('*all', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-});
+initDB()
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to initialize database', err);
+    process.exitCode = 1;
+  });
