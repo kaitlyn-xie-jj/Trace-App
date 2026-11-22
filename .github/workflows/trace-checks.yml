@@ -3,7 +3,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master, feature/trace-core-legacy-read-model]
+    branches: [master, feature/trace-core-legacy-read-model, audit/mvp-reliability-20261122]
 
 jobs:
   test-and-build:
@@ -21,5 +21,7 @@ jobs:
         run: npm install --no-save --package-lock=false @rollup/rollup-linux-x64-gnu
       - name: Unit tests
         run: npm test
+      - name: TypeScript check
+        run: npx tsc --noEmit
       - name: Frontend build
         run: npm run build

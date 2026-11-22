@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { projectInventory } from './inventoryProjection.js';
 import { searchInventory } from './inventorySearch.js';
 import { prepareSceneUpdate } from './sceneUpdates.js';
+import { CategoryChangeError, renameOrMergeCategory } from './categoryManagement.js';
 
 // Load environment variables
 // Try loading .env first, then .env.local (if exists, it won't override set vars by default in older dotenv, 
@@ -121,30 +122,13 @@ app.delete('/api/categories/:name', async (req, res) => {
 });
 
 app.put('/api/categories/:oldName', async (req, res) => {
-  const { oldName } = req.params;
-  const { newName } = req.body;
-
-  if (!newName) return res.status(400).json({ error: 'New name is required' });
-
   try {
-    await db.run('BEGIN TRANSACTION');
-
-    // Get old order
-    const oldCat = await db.get('SELECT "order" FROM categories WHERE name = ?', [oldName]);
-    const order = oldCat ? oldCat.order : 0;
-
-    // Insert new, delete old
-    await db.run('INSERT INTO categories (name, "order") VALUES (?, ?)', [newName, order]);
-    await db.run('DELETE FROM categories WHERE name = ?', [oldName]);
-
-    // Update scenes
-    await db.run('UPDATE scenes SET superCategory = ? WHERE superCategory = ?', [newName, oldName]);
-
-    await db.run('COMMIT');
-    res.json({ success: true });
+    const result = await renameOrMergeCategory(db, req.params.oldName, req.body?.newName);
+    res.json({ success: true, ...result });
   } catch (err) {
-    await db.run('ROLLBACK');
-    res.status(500).json({ error: err.message });
+    const status = err instanceof CategoryChangeError ? err.statusCode : 500;
+    if (status === 500) console.error('Category rename or merge failed:', err);
+    res.status(status).json({ error: status === 500 ? 'Unable to update category' : err.message });
   }
 });
 
