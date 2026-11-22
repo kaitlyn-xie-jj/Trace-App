@@ -10,6 +10,7 @@ interface ChatSearchProps {
   autoStartLive?: boolean;
   onLiveEnd?: () => void;
   onClearInitialQuery?: () => void;
+  onStartCapture?: () => void;
 }
 
 interface MatchResult {
@@ -22,7 +23,7 @@ interface ExtendedChatMessage extends ChatMessage {
   modelName?: string;
 }
 
-const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStartLive, onLiveEnd, onClearInitialQuery }) => {
+const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStartLive, onLiveEnd, onClearInitialQuery, onStartCapture }) => {
   const [messages, setMessages] = useState<ExtendedChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -197,6 +198,17 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
                 ? `已经记录了 ${recordedItems.length} 件物品。可以用名字、用途或外观特征来描述。`
                 : '先去「记东西」拍下收纳的角落，之后就能随时来这里寻找。'}
             </p>
+            {recordedItems.length === 0 && onStartCapture && (
+              <button
+                type="button"
+                onClick={onStartCapture}
+                className="mt-5 w-full rounded-2xl bg-black px-4 py-3 text-sm font-bold text-white shadow-sm transition-transform active:scale-95"
+              >
+                <i className="fa-solid fa-camera mr-2" aria-hidden="true"></i>
+                拍一张，开始记录
+              </button>
+            )}
+            {recordedItems.length > 0 && (
             <div className="mt-6 space-y-2">
               <p className="text-xs font-semibold tracking-wide text-gray-400">试试这样问</p>
               {exampleQuestions.map(question => (
@@ -211,6 +223,7 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
                 </button>
               ))}
             </div>
+            )}
             <p className="mt-5 text-xs leading-relaxed text-gray-400">
               查询依据已记录的信息；物品移动后，请及时更新位置。
             </p>
