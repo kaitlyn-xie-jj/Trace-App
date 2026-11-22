@@ -12,7 +12,6 @@ export const analyzeImage = async (base64Image: string, knownSpaces: string[] = 
     : `请根据画面内容，推测并总结这是一个什么空间（例如：书房、卧室、厨房、客厅），作为 suggestedSpace 返回。`;
 
   const scanTask = async () => {
-    try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
@@ -63,14 +62,21 @@ export const analyzeImage = async (base64Image: string, knownSpaces: string[] = 
           },
         },
       });
-      return JSON.parse(response.text) as AIAnalysisResult;
-    } catch (e) {
-      return { items: [] };
-    }
+      const parsed = JSON.parse(response.text) as AIAnalysisResult;
+      if (!parsed || !Array.isArray(parsed.items)) throw new Error('Gemini returned invalid items');
+      return parsed;
   };
 
-  const allResults = await Promise.all(Array(MAX_REPETITIONS).fill(null).map(() => scanTask()));
-  return allResults.reduce((best, current) => (current.items?.length || 0) > (best.items?.length || 0) ? current : best, { items: [] } as AIAnalysisResult);
+  const attempts = await Promise.allSettled(Array.from({ length: MAX_REPETITIONS }, () => scanTask()));
+  const successful = attempts
+    .filter((result): result is PromiseFulfilledResult<AIAnalysisResult> => result.status === 'fulfilled')
+    .map(result => result.value);
+  if (successful.length === 0) {
+    throw new Error('Gemini recognition failed for every attempt');
+  }
+  return successful.reduce((best, current) =>
+    current.items.length > best.items.length ? current : best
+  );
 };
 
 export const queryInventory = async (
