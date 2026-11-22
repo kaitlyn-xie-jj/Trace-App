@@ -92,7 +92,7 @@ export const analyzeImageQwen = async (base64Image: string, knownSpaces: string[
 
     if (!content) {
       console.error("Qwen Empty Response", data);
-      return { items: [] };
+      throw new Error('Qwen returned no recognition payload');
     }
 
     // Clean up markdown code blocks if present
@@ -112,15 +112,16 @@ export const analyzeImageQwen = async (base64Image: string, knownSpaces: string[
           }
         });
       }
+      if (!Array.isArray(parsed.items)) throw new Error('Qwen returned invalid items');
       return parsed as AIAnalysisResult;
     } catch (e) {
-      console.error("Failed to parse Qwen JSON:", content);
-      return { items: [] };
+      console.error("Failed to parse Qwen JSON:", e);
+      throw new Error('Qwen recognition result was invalid');
     }
 
   } catch (error) {
     console.error("Qwen Service Error:", error);
-    return { items: [] };
+    throw error;
   }
 };
 
