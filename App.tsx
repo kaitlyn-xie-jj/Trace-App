@@ -22,6 +22,7 @@ const App: React.FC = () => {
   
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [pendingImageVersion, setPendingImageVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,6 +48,7 @@ const App: React.FC = () => {
     try {
       await addScene(newScene);
       setScenes(prev => [...prev, newScene]);
+      setPendingImage(null);
       setActiveTab('gallery');
     } catch (e) {
       console.error("Failed to add scene", e);
@@ -57,6 +59,7 @@ const App: React.FC = () => {
   const handleUpdateScene = async (updatedScene: SceneRecord) => {
     await updateScene(updatedScene);
     setScenes(prev => prev.map(s => s.id === updatedScene.id ? updatedScene : s));
+    setPendingImage(null);
     setActiveTab('gallery');
   };
 
@@ -91,8 +94,11 @@ const App: React.FC = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPendingImage(reader.result as string);
+        // Even selecting the same image again should start a fresh scan.
+        setPendingImageVersion(version => version + 1);
         setActiveTab('storage');
       };
+      reader.onerror = () => window.alert('读取照片失败，请重新选择图片。');
       reader.readAsDataURL(file);
     }
     e.target.value = '';
@@ -149,7 +155,8 @@ const App: React.FC = () => {
         )}
         {activeTab === 'storage' && (
           <div className="h-full">
-            <StorageView 
+            <StorageView
+              key={pendingImageVersion}
               onAddScene={handleAddScene} 
               onUpdateScene={handleUpdateScene}
               initialImage={pendingImage} 
