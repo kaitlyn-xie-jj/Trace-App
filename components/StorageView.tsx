@@ -307,6 +307,8 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
           </label>
           <div className="flex gap-3">
             <button
+              type="button"
+              aria-label="选择空间分类"
               onClick={() => setShowSpaceSelector(true)}
               className="relative w-1/3 min-w-[120px] bg-gray-50 rounded-2xl pl-4 pr-8 py-4 text-left flex items-center active:scale-95 transition-all"
             >
@@ -319,7 +321,8 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
             </button>
             <input 
               ref={locationInputRef}
-              type="text" 
+              type="text"
+              aria-label="角落或具体收纳位置" 
               value={batchLocation}
               onChange={e => setBatchLocation(e.target.value)}
               placeholder="比如：书桌..."
@@ -362,10 +365,20 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
 
         {!analyzing && (
           <div className="w-full bg-white rounded-3xl p-6 border border-gray-100">
-            <h3 className="text-sm font-bold text-primary mb-4 block">
-              <i className="fa-solid fa-wand-magic-sparkles mr-2"></i>
-              我发现了这些
-            </h3>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-primary">
+                  <i className="fa-solid fa-wand-magic-sparkles mr-2" aria-hidden="true"></i>
+                  我发现了这些
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                  点一下物品可修改；没识别到的也能手动添加。
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-500">
+                {detectedItems.length} 件
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2">
               {detectedItems.map((it, idx) => (
                 <button 
