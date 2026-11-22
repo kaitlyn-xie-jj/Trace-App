@@ -21,5 +21,7 @@ jobs:
         run: npm install --no-save --package-lock=false @rollup/rollup-linux-x64-gnu
       - name: Unit tests
         run: npm test
+      - name: TypeScript check
+        run: npx tsc --noEmit
       - name: Frontend build
         run: npm run build
