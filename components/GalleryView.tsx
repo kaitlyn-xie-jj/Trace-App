@@ -6,7 +6,7 @@ interface GalleryViewProps {
   scenes: SceneRecord[];
   onDelete: (id: string) => void;
   onUpdate: (scene: SceneRecord) => void;
-  onReload?: () => void;
+  onReload?: () => Promise<void>;
 }
 
 const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, onReload }) => {
@@ -260,10 +260,10 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
           // Refresh everything
           await loadCategories();
           if (onReload) {
-              onReload();
+              await onReload();
           }
           setManagingCategory(null);
-          showToast("改名成功 (请刷新页面查看最新状态)"); 
+          showToast("改名成功"); 
       } catch (e) {
           console.error("Failed to rename", e);
           showToast("改名失败");
@@ -276,10 +276,10 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
           await updateCategoryName(managingCategory, mergeTarget);
           await loadCategories();
           if (onReload) {
-              onReload();
+              await onReload();
           }
           setManagingCategory(null);
-          showToast("合并成功 (请刷新页面查看最新状态)");
+          showToast("合并成功");
       } catch (e) {
           console.error("Failed to merge", e);
           showToast("合并失败");
