@@ -3,7 +3,7 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master, feature/trace-core-legacy-read-model]
+    branches: [master, feature/trace-core-legacy-read-model, audit/mvp-reliability-20261122]
 
 jobs:
   test-and-build:
