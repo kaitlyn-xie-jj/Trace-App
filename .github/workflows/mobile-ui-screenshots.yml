@@ -1,0 +1,40 @@
+name: Mobile UI screenshots
+on:
+  pull_request:
+    branches: [fix/mvp-critical-flows-20261122]
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install project and screenshot runner
+        run: |
+          npm install
+          npm install --no-save --package-lock=false playwright @rollup/rollup-linux-x64-gnu
+          npx playwright install --with-deps chromium
+      - name: Start isolated local MVP and take screenshots
+        env:
+          DB_FILE: /tmp/trace-visual-audit.sqlite
+        run: |
+          nohup npm run server > /tmp/trace-server.log 2>&1 &
+          nohup npm run dev -- --host 0.0.0.0 > /tmp/trace-vite.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3001/api/scenes >/dev/null && curl -fsS http://127.0.0.1:3000 >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3001/api/scenes
+          node scripts/visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trace-mobile-ui-screenshots
+          path: visual-screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14

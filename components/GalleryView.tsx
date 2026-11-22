@@ -661,7 +661,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
         <div>
            <h1 className="text-3xl font-bold text-black">百宝箱</h1>
            <p className="text-gray-400 text-sm font-medium mt-1">
-             {scenes.length} 个角落 · {allCategories.length} 个空间
+             {scenes.length} 个角落 · {scenes.reduce((total, scene) => total + (scene.items?.length || 0), 0)} 件物品 · {allCategories.length} 个空间
            </p>
         </div>
         <div className="flex gap-2">
@@ -677,6 +677,7 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
             {!isSelectionMode && (
               <button 
                 onClick={() => setShowAddCategory(true)}
+                aria-label="新建空间"
                 className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black shadow-sm active:scale-90 transition-all"
               >
                 <i className="fa-solid fa-folder-plus"></i>
@@ -719,7 +720,9 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
               <i className="fa-solid fa-box-open text-4xl opacity-20"></i>
             </div>
             <p className="text-lg font-bold text-gray-500">百宝箱是空的</p>
-            <p className="text-sm mt-2">快去拍点东西吧！</p>
+            <p className="text-sm mt-2 text-center leading-relaxed">打开「记东西」拍下一处收纳空间，
+              <span className="block">让 Trace 帮你记住里面的物品。</span>
+            </p>
           </div>
         ) : (
           <>
@@ -1279,7 +1282,10 @@ const SceneCard: React.FC<{
       </div>
       <div className="p-4">
         <p className="text-sm font-bold text-black truncate mb-1">{scene.locationCategory}</p>
-        <p className="text-xs text-gray-400 font-medium">{new Date(scene.timestamp).toLocaleDateString()}</p>
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <p className="text-xs text-gray-400 font-medium">{new Date(scene.timestamp).toLocaleDateString()}</p>
+          <span className="text-xs font-medium text-primary">{scene.items?.length || 0} 件</span>
+        </div>
       </div>
     </div>
   );

@@ -37,8 +37,15 @@ export function searchInventory(inventory, rawQuery, { limit = 20 } = {}) {
     if (name && query === name) {
       score = 100;
       matchedField = 'name';
-    } else if (name && (query.includes(name) || (query.length >= 2 && name.includes(query)))) {
+    } else if (name.length >= 2 && query.includes(name)) {
+      // Single-character labels are too ambiguous to claim a direct location.
+      // For example, a saved "笔" must not match "笔记本在哪里".
       score = 80;
+      matchedField = 'name';
+    } else if (query.length >= 2 && name.includes(query)) {
+      // Partial-name matches are useful candidates but must not short-circuit
+      // multimodal retrieval as if they were exact evidence.
+      score = 60;
       matchedField = 'name';
     } else if (category && (query === category || (category.length >= 2 && query.includes(category)))) {
       score = 40;

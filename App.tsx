@@ -173,6 +173,7 @@ const App: React.FC = () => {
               autoStartLive={liveAutoStart}
               onLiveEnd={() => setLiveAutoStart(false)}
               onClearInitialQuery={() => setInitialChatQuery('')}
+              onStartCapture={() => setIsMediaModalOpen(true)}
             />
           </div>
         )}

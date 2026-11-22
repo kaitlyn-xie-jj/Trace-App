@@ -53,3 +53,21 @@ test('search does not mutate projected items or locations', () => {
   searchInventory(inventory, '工程实验室');
   assert.equal(JSON.stringify(inventory), before);
 });
+
+test('short item names never hijack unrelated questions', () => {
+  const special = projectInventory([
+    { id: 'tiny', superCategory: '书房', locationCategory: '抽屉',
+      timestamp: 1, items: [{ itemName: '笔' }, { itemName: '笔记本' }, { itemName: 'M5 螺丝' }] }
+  ]);
+  const question = searchInventory(special, '笔记本在哪里');
+  const direct = question.results.filter(hit => hit.score >= 80);
+  assert.equal(direct.length, 1);
+  assert.equal(direct[0].item.name, '笔记本');
+  assert.equal(searchInventory(special, '笔').results[0].score, 100);
+});
+
+test('partial item labels remain candidates but cannot bypass AI fallback', () => {
+  const result = searchInventory(inventory, 'Pigeon');
+  assert.equal(result.results[0].score, 60);
+  assert.equal(result.results[0].matchedField, 'name');
+});
