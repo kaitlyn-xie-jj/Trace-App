@@ -15,6 +15,9 @@ interface StorageViewProps {
 const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, initialImage, existingScenes }) => {
   const [image, setImage] = useState<string | null>(initialImage || null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [categoryLoadError, setCategoryLoadError] = useState(false);
+  const analysisRunId = useRef(0);
   const [syncing, setSyncing] = useState(false);
   const [batchLocation, setBatchLocation] = useState(''); 
   const [detectedItems, setDetectedItems] = useState<AIItem[]>([]);
@@ -44,7 +47,12 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
     getCategories().then(cats => {
       setExistingCategories(cats);
       setCategoriesLoaded(true);
-    }).catch(console.error);
+    }).catch(error => {
+      console.error('Unable to load spaces', error);
+      setCategoryLoadError(true);
+      // A failed category fetch must not prevent photo recognition/manual entry.
+      setCategoriesLoaded(true);
+    });
     const lastSpace = localStorage.getItem('last_selected_space');
     if (lastSpace) setSelectedSpace(lastSpace);
     return () => { isMounted.current = false; };
@@ -113,16 +121,22 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
 
   useEffect(() => {
     if (initialImage && categoriesLoaded) {
+      // This component may stay mounted when the user chooses another photo.
+      setImage(initialImage);
+      setDetectedItems([]);
+      setBatchLocation('');
       triggerAnalysis(initialImage);
     }
   }, [initialImage, categoriesLoaded]);
 
   const triggerAnalysis = async (base64: string) => {
     if (!isMounted.current) return;
+    const currentRun = ++analysisRunId.current;
     setAnalyzing(true);
+    setAnalysisError(null);
     try {
       const data = await analyzeImage(base64, existingCategories);
-      if (!isMounted.current) return;
+      if (!isMounted.current || currentRun !== analysisRunId.current) return;
       setDetectedItems(data.items || []);
       
       // Auto-select space if suggested and exists in current categories
@@ -135,13 +149,16 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
         }
       }
 
-      if (data.suggestedLocation && !batchLocation) {
-        setBatchLocation(data.suggestedLocation);
+      if (data.suggestedLocation) {
+        setBatchLocation(previous => previous || data.suggestedLocation || '');
       }
     } catch (e) {
-      alert("AI 扫描遇到一点问题");
+      if (isMounted.current && currentRun === analysisRunId.current) {
+        console.error('Image recognition failed', e);
+        setAnalysisError('识别失败了。这不代表照片里没有物品，你可以重试，或者手动添加物品。');
+      }
     } finally {
-      if (isMounted.current) setAnalyzing(false);
+      if (isMounted.current && currentRun === analysisRunId.current) setAnalyzing(false);
     }
   };
 
@@ -326,6 +343,23 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
           )}
         </div>
 
+        {categoryLoadError && (
+          <p role="status" className="mb-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            暂时无法加载已有空间。仍可识别和编辑物品，但保存前请检查网络连接。
+          </p>
+        )}
+
+        {analysisError && !analyzing && (
+          <div role="alert" className="mb-4 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-900">
+            <p className="text-sm font-medium mb-3">{analysisError}</p>
+            <button
+              type="button"
+              onClick={() => image && triggerAnalysis(image)}
+              className="rounded-xl bg-white border border-orange-300 px-4 py-2 text-sm font-bold"
+            >重新识别</button>
+          </div>
+        )}
+
         {!analyzing && (
           <div className="w-full bg-white rounded-3xl p-6 border border-gray-100">
             <h3 className="text-sm font-bold text-primary mb-4 block">
@@ -393,12 +427,14 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
             <div className="flex gap-3">
               <button 
                 onClick={handleCancelOverwrite}
+                disabled={syncing}
                 className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold rounded-2xl active:scale-95 transition-all text-lg"
               >
                 我去改名
               </button>
               <button 
                 onClick={handleConfirmOverwrite}
+                disabled={syncing}
                 className="flex-1 py-4 bg-black text-white font-bold rounded-2xl active:scale-95 transition-all text-lg shadow-lg"
               >
                 覆盖它
