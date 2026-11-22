@@ -298,9 +298,9 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
         <h1 className="text-xl font-bold text-black">记东西</h1>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-6 pt-32 pb-40 no-scrollbar">
+      <div className="flex-1 overflow-y-auto px-6 pt-24 pb-48 no-scrollbar">
 
-        <div className="w-full bg-white rounded-3xl p-6 border border-gray-100 mb-6 shadow-sm">
+        <div className="w-full bg-white rounded-3xl p-5 border border-gray-100 mb-4 shadow-sm">
           <label className="text-sm font-bold text-primary mb-3 block">
             <i className="fa-solid fa-location-dot mr-2"></i>
             这是哪里？
@@ -331,7 +331,7 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
           </div>
         </div>
 
-        <div className="w-full bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm relative mb-6">
+        <div className="w-full bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm relative mb-4">
           <img src={image || ''} className="w-full h-auto object-cover max-h-[50vh]" />
           {analyzing && (
             <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center text-primary">
@@ -364,7 +364,7 @@ const StorageView: React.FC<StorageViewProps> = ({ onAddScene, onUpdateScene, in
         )}
 
         {!analyzing && (
-          <div className="w-full bg-white rounded-3xl p-6 border border-gray-100">
+          <div className="w-full bg-white rounded-3xl p-5 border border-gray-100">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-sm font-bold text-primary">
