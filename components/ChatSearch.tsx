@@ -26,6 +26,17 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
   const [messages, setMessages] = useState<ExtendedChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
+  const recordedItems = scenes.flatMap(scene => scene.items || []);
+  const firstItem = recordedItems.find(item => item.itemName?.trim());
+  const exampleQuestions = firstItem
+    ? [
+        `${firstItem.itemName}在哪里？`,
+        scenes.find(scene => scene.superCategory)?.superCategory
+          ? `${scenes.find(scene => scene.superCategory)!.superCategory}里有什么？`
+          : '我记过哪些东西？',
+        '那个不常用的小东西放在哪里？'
+      ]
+    : ['我记过哪些东西？', '书房里有什么？', '那个黑色的小东西在哪里？'];
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasSentInitialQuery = useRef(false);
   const historyLoaded = useRef(false);
@@ -63,8 +74,8 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
   }, [messages, loading]);
 
   const handleSend = useCallback(async (text?: string) => {
-    const query = text || inputValue;
-    if (!query.trim() || loading) return;
+    const query = (text ?? inputValue).trim();
+    if (!query || loading) return;
     setInputValue('');
     const timestamp = Date.now();
     const userMsg: ExtendedChatMessage & { timestamp?: number } = { role: 'user', content: query, timestamp };
@@ -175,6 +186,36 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
       </div>
       
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-32 pb-40 space-y-6 no-scrollbar">
+        {messages.length === 0 && !loading && (
+          <section className="mx-auto max-w-lg rounded-3xl border border-teal-100 bg-white px-6 py-7 shadow-sm" aria-label="开始找东西">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary" aria-hidden="true">
+              <i className="fa-solid fa-magnifying-glass text-2xl"></i>
+            </div>
+            <h2 className="mb-2 text-2xl font-bold text-gray-900">想找什么，问我就好</h2>
+            <p className="text-sm leading-relaxed text-gray-500">
+              {recordedItems.length > 0
+                ? `已经记录了 ${recordedItems.length} 件物品。可以用名字、用途或外观特征来描述。`
+                : '先去「记东西」拍下收纳的角落，之后就能随时来这里寻找。'}
+            </p>
+            <div className="mt-6 space-y-2">
+              <p className="text-xs font-semibold tracking-wide text-gray-400">试试这样问</p>
+              {exampleQuestions.map(question => (
+                <button
+                  key={question}
+                  type="button"
+                  onClick={() => handleSend(question)}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-left text-sm font-medium text-gray-800 transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <span>{question}</span>
+                  <i className="fa-solid fa-arrow-up-right-from-square text-xs text-primary" aria-hidden="true"></i>
+                </button>
+              ))}
+            </div>
+            <p className="mt-5 text-xs leading-relaxed text-gray-400">
+              查询依据已记录的信息；物品移动后，请及时更新位置。
+            </p>
+          </section>
+        )}
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
             <div className={`max-w-[85%] rounded-3xl px-5 py-4 text-lg shadow-sm font-medium ${msg.role === 'user' ? 'bg-primary text-white rounded-br-sm' : 'bg-white text-black rounded-bl-sm border border-gray-100'}`}>
@@ -250,7 +291,9 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
             placeholder="问我吧，比如：我的耳机在哪？"
             className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 px-4 py-3 text-lg font-bold placeholder-gray-300 min-w-0"
           />
-          <button 
+          <button
+            type="button"
+            aria-label="发送搜索问题"
             onClick={() => handleSend()}
             disabled={!inputValue.trim() || loading}
             className="bg-black text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg disabled:opacity-30 transition-transform active:scale-90 flex-shrink-0"
