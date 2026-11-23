@@ -696,14 +696,10 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, scenesLoading, scenes
         </div>
       )}
 
-      <div className="px-6 py-6 pt-6 flex items-center justify-between">
-        <div>
-           <h1 className="text-3xl font-bold text-black">百宝箱</h1>
-           <p className="text-gray-400 text-sm font-medium mt-1">
-             {scenes.length} 个角落 · {scenes.reduce((total, scene) => total + (scene.items?.length || 0), 0)} 件物品 · {allCategories.length} 个空间
-           </p>
-        </div>
-        <div className="flex gap-2">
+      <div className="px-6 pt-6 pb-5">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="shrink-0 text-3xl font-bold text-black">百宝箱</h1>
+          <div className="flex shrink-0 items-center gap-2">
             {!isSelectionMode && (
               <button
                 type="button"
@@ -711,30 +707,36 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, scenesLoading, scenes
                 title="导出完整记录（含照片）"
                 onClick={handleExport}
                 disabled={exporting || scenesLoading || scenesLoadError}
-                className="w-10 h-10 rounded-full bg-white text-black shadow-sm disabled:opacity-40 active:scale-95"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black shadow-sm disabled:opacity-40 active:scale-95"
               >
                 <i className={exporting ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-download'} aria-hidden="true"></i>
               </button>
             )}
-            <button 
+            <button
+              type="button"
               onClick={() => {
-                  setIsSelectionMode(!isSelectionMode);
-                  setSelectedIds(new Set());
+                setIsSelectionMode(!isSelectionMode);
+                setSelectedIds(new Set());
               }}
-              className={`px-4 h-10 rounded-full font-bold text-sm transition-all ${isSelectionMode ? 'bg-black text-white' : 'bg-white text-black'}`}
+              className={`h-10 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-all ${isSelectionMode ? 'bg-black text-white' : 'bg-white text-black'}`}
             >
               {isSelectionMode ? '完成' : '多选'}
             </button>
             {!isSelectionMode && (
-              <button 
+              <button
+                type="button"
                 onClick={() => setShowAddCategory(true)}
                 aria-label="新建空间"
-                className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black shadow-sm active:scale-90 transition-all"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black shadow-sm active:scale-90"
               >
-                <i className="fa-solid fa-folder-plus"></i>
+                <i className="fa-solid fa-folder-plus" aria-hidden="true"></i>
               </button>
             )}
+          </div>
         </div>
+        <p className="mt-2 text-sm font-medium text-gray-400">
+          {scenes.length} 个角落 · {scenes.reduce((total, scene) => total + (scene.items?.length || 0), 0)} 件物品 · {allCategories.length} 个空间
+        </p>
       </div>
 
       {showAddCategory && (
