@@ -296,8 +296,9 @@ const ChatSearch: React.FC<ChatSearchProps> = ({ scenes, initialQuery, autoStart
 
       <div className="fixed bottom-28 left-0 w-full px-6 z-40">
         <div className="max-w-lg mx-auto flex items-center bg-white rounded-[2rem] border-2 border-gray-100 shadow-2xl px-3 py-2">
-          <input 
-            type="text" 
+          <input
+            type="text"
+            aria-label="描述要找的物品"
             value={inputValue}
             onChange={e => setInputValue(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
