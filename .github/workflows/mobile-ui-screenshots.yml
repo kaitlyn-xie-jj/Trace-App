@@ -1,7 +1,7 @@
 name: Mobile UI screenshots
 on:
   pull_request:
-    branches: [fix/mvp-critical-flows-20261122]
+    branches: [fix/mvp-critical-flows-20261122, visual/mobile-ui-screenshots-20261122]
 
 jobs:
   screenshots:
@@ -31,6 +31,7 @@ jobs:
           done
           curl -fsS http://127.0.0.1:3001/api/scenes
           node scripts/visual-capture.mjs
+          node scripts/product-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

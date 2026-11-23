@@ -14,6 +14,8 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'storage' | 'menu' | 'chat' | 'gallery'>('gallery');
   const [items, setItems] = useState<StorageItem[]>([]);
   const [scenes, setScenes] = useState<SceneRecord[]>([]);
+  const [scenesLoading, setScenesLoading] = useState(true);
+  const [scenesLoadError, setScenesLoadError] = useState(false);
   const [preselectedScene, setPreselectedScene] = useState<SceneType | null>(null);
   const [initialChatQuery, setInitialChatQuery] = useState('');
   const [liveAutoStart, setLiveAutoStart] = useState(false);
@@ -25,6 +27,22 @@ const App: React.FC = () => {
   const [pendingImageVersion, setPendingImageVersion] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const reloadScenes = async (): Promise<void> => {
+    setScenesLoading(true);
+    try {
+      const records = await getAllScenes();
+      if (!Array.isArray(records)) throw new Error('Scene response is not an array');
+      setScenes(records);
+      setScenesLoadError(false);
+    } catch (error) {
+      console.error('Failed to load recorded scenes', error);
+      setScenesLoadError(true);
+      throw error;
+    } finally {
+      setScenesLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Load legacy items
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -35,8 +53,8 @@ const App: React.FC = () => {
         console.error("Failed to load items", e);
       }
     }
-    // Load scenes from DB
-    getAllScenes().then(setScenes).catch(console.error);
+    // Never mistake a failed fetch for an empty inventory.
+    void reloadScenes().catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -180,12 +198,15 @@ const App: React.FC = () => {
         {activeTab === 'gallery' && (
           <div className="h-full">
             <GalleryView 
-              scenes={scenes} 
+              scenes={scenes}
+              scenesLoading={scenesLoading}
+              scenesLoadError={scenesLoadError}
+              onRetryLoad={() => { void reloadScenes().catch(() => {}); }}
               onDelete={handleDeleteScene}
               onUpdate={(updatedScene) => {
                  setScenes(prev => prev.map(s => s.id === updatedScene.id ? updatedScene : s));
               }}
-              onReload={() => getAllScenes().then(setScenes)}
+              onReload={reloadScenes}
             />
           </div>
         )}

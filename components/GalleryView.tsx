@@ -1,20 +1,25 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { SceneRecord, AIItem, SceneType } from '../types';
-import { updateScene, addCategory, getCategories, deleteCategory, updateCategoryName, deleteScene, updateCategoryOrder } from '../services/dbService';
+import { updateScene, addCategory, getCategories, getAllScenes, deleteCategory, updateCategoryName, deleteScene, updateCategoryOrder } from '../services/dbService';
+import { serializeSceneExport } from '../utils/sceneExport.js';
 
 interface GalleryViewProps {
   scenes: SceneRecord[];
+  scenesLoading: boolean;
+  scenesLoadError: boolean;
+  onRetryLoad: () => void;
   onDelete: (id: string) => void;
   onUpdate: (scene: SceneRecord) => void;
   onReload?: () => Promise<void>;
 }
 
-const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, onReload }) => {
+const GalleryView: React.FC<GalleryViewProps> = ({ scenes, scenesLoading, scenesLoadError, onRetryLoad, onDelete, onUpdate, onReload }) => {
   const [selectedScene, setSelectedScene] = useState<SceneRecord | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   // Category Drag State
   const [draggingCategory, setDraggingCategory] = useState<string | null>(null);
@@ -177,6 +182,40 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleExport = async () => {
+    if (exporting || scenesLoading || scenesLoadError) return;
+    const agreed = window.confirm(
+      '导出的文件包含完整照片、物品名称及存放位置，可能涉及个人隐私。请妥善保管。当前版本尚不支持一键导入恢复。确定导出吗？'
+    );
+    if (!agreed) return;
+
+    setExporting(true);
+    try {
+      // Fetch both sets from the server so the file is not a partial UI snapshot.
+      const [allScenes, allCategories] = await Promise.all([getAllScenes(), getCategories()]);
+      const contents = serializeSceneExport(allScenes, allCategories);
+      const objectUrl = URL.createObjectURL(new Blob([contents], { type: 'application/json' }));
+      try {
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = `Trace-export-${new Date().toISOString().slice(0, 10)}.json`;
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      } finally {
+        // Do not revoke synchronously before the browser accepts the download.
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 10_000);
+      }
+      showToast('导出已开始，请妥善保存文件');
+    } catch (error) {
+      console.error('Failed to export inventory', error);
+      showToast('导出失败，未生成文件。请检查网络后重试');
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Group scenes by superCategory, including empty categories
@@ -657,33 +696,47 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
         </div>
       )}
 
-      <div className="px-6 py-6 pt-6 flex items-center justify-between">
-        <div>
-           <h1 className="text-3xl font-bold text-black">百宝箱</h1>
-           <p className="text-gray-400 text-sm font-medium mt-1">
-             {scenes.length} 个角落 · {scenes.reduce((total, scene) => total + (scene.items?.length || 0), 0)} 件物品 · {allCategories.length} 个空间
-           </p>
-        </div>
-        <div className="flex gap-2">
-            <button 
+      <div className="px-6 pt-6 pb-5">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="shrink-0 text-3xl font-bold text-black">百宝箱</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            {!isSelectionMode && (
+              <button
+                type="button"
+                aria-label="导出完整收纳记录"
+                title="导出完整记录（含照片）"
+                onClick={handleExport}
+                disabled={exporting || scenesLoading || scenesLoadError}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black shadow-sm disabled:opacity-40 active:scale-95"
+              >
+                <i className={exporting ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-download'} aria-hidden="true"></i>
+              </button>
+            )}
+            <button
+              type="button"
               onClick={() => {
-                  setIsSelectionMode(!isSelectionMode);
-                  setSelectedIds(new Set());
+                setIsSelectionMode(!isSelectionMode);
+                setSelectedIds(new Set());
               }}
-              className={`px-4 h-10 rounded-full font-bold text-sm transition-all ${isSelectionMode ? 'bg-black text-white' : 'bg-white text-black'}`}
+              className={`h-10 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-all ${isSelectionMode ? 'bg-black text-white' : 'bg-white text-black'}`}
             >
               {isSelectionMode ? '完成' : '多选'}
             </button>
             {!isSelectionMode && (
-              <button 
+              <button
+                type="button"
                 onClick={() => setShowAddCategory(true)}
                 aria-label="新建空间"
-                className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black shadow-sm active:scale-90 transition-all"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black shadow-sm active:scale-90"
               >
-                <i className="fa-solid fa-folder-plus"></i>
+                <i className="fa-solid fa-folder-plus" aria-hidden="true"></i>
               </button>
             )}
+          </div>
         </div>
+        <p className="mt-2 text-sm font-medium text-gray-400">
+          {scenes.length} 个角落 · {scenes.reduce((total, scene) => total + (scene.items?.length || 0), 0)} 件物品 · {allCategories.length} 个空间
+        </p>
       </div>
 
       {showAddCategory && (
@@ -714,7 +767,25 @@ const GalleryView: React.FC<GalleryViewProps> = ({ scenes, onDelete, onUpdate, o
       )}
 
       <div ref={containerRef} className="flex-1 overflow-y-auto px-6 pb-40 no-scrollbar space-y-8">
-        {scenes.length === 0 ? (
+        {scenesLoadError ? (
+          <div role="alert" className="mx-auto mt-14 max-w-md rounded-3xl border border-orange-100 bg-white px-6 py-8 text-center shadow-sm">
+            <i className="fa-solid fa-triangle-exclamation mb-4 text-3xl text-orange-500" aria-hidden="true"></i>
+            <h2 className="text-lg font-bold text-gray-900">暂时无法读取收纳记录</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-500">
+              可能是网络或服务器问题。这不代表你保存的物品已经被删除。
+            </p>
+            <button
+              type="button"
+              onClick={onRetryLoad}
+              className="mt-5 rounded-2xl bg-black px-5 py-3 text-sm font-bold text-white"
+            >重新加载</button>
+          </div>
+        ) : scenesLoading ? (
+          <div role="status" className="mx-auto mt-20 text-center text-sm font-medium text-gray-500">
+            <i className="fa-solid fa-circle-notch fa-spin mr-2" aria-hidden="true"></i>
+            正在加载收纳记录…
+          </div>
+        ) : scenes.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
               <i className="fa-solid fa-box-open text-4xl opacity-20"></i>
